@@ -29,23 +29,7 @@ namespace chaining
             }
             string[] facts = ParseKnowledgeBase(knowledgeBase, rawKnowledgeBase); // Parses knowledgebase and returns all facts for forward chaining.
 
-            if (forward)
-                for (int i = 0; i < queryCount; i++)
-                {
-                    string query = Regex.Match(Console.ReadLine(), @"\w+").ToString();
-                    Queue<string> agenda = new Queue<string>(facts);
-                    while (agenda.Count > 0)
-                    {
-                        string p = agenda.Dequeue();
-                        if (p == query)
-                        {
-                            Console.WriteLine(query + ". true.");
-                            break;
-                        }
 
-                        if (knowledgeBase[p].Evaluate())
-                    }
-                }
         }
 
         static string[] ParseKnowledgeBase(Dictionary<string, Clause> knowledgeBase, string[] rawKnowledgeBase)
