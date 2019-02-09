@@ -27,59 +27,21 @@ namespace chaining
                     } while (!line.Contains("."));
                 rawKnowledgeBase[i] = line;
             }
-            string[] facts = ParseKnowledgeBase(knowledgeBase, rawKnowledgeBase); // Parses knowledgebase and returns all facts for forward chaining.
 
+            Chaining chaining = new Chaining(rawKnowledgeBase);
 
-        }
-
-        static string[] ParseKnowledgeBase(Dictionary<string, Clause> knowledgeBase, string[] rawKnowledgeBase)
-        {
-            List<string> facts = new List<string>();
-            foreach (string line in rawKnowledgeBase)
+            for (int i = 0; i < queryCount; i++)
             {
-                if (Regex.IsMatch(line, @"^\w+\.$")) // This line contains a fact
-                {
-                    string name = Regex.Match(line, @"\w+").ToString();
-                    if (knowledgeBase[name] == null)
-                        knowledgeBase.Add(name, new Clause(new IProlog[1] { new Fact() }));
-                    else
-                        knowledgeBase[name].Add(new Fact());
-                    facts.Add(name);
-                    continue;
-                }
-                else // This line contains a rule
-                {
-                    string[] splitLine = Regex.Split(line, ":-");
-                    string name = splitLine[0];
-                    string[] parents = Regex.Split(splitLine[1], @"[\.,]");
-                    if (knowledgeBase[name] == null)
-                        knowledgeBase.Add(name, new Clause(new IProlog[1] { new Rule(parents) }));
-                    else
-                        knowledgeBase[name].Add(new Rule(parents));
-                }
+                string query = Regex.Match(Console.ReadLine(), @"\w+").ToString();
+                string result = "";
+                if (forward)
+                    result = chaining.Forward(query).ToString().ToLower();
+                else
+                    result = chaining.Backward(query).ToString().ToLower();
+                Console.WriteLine(query + ". " + result + ".");
             }
-            return facts.ToArray();
-        }
 
-        static string[] FindChildren(string[] names, Dictionary<string, IProlog[]> knowledgeBase)
-        {
-            List<string> children = new List<string>();
-            foreach (string key in knowledgeBase.Keys)
-            {
-                if (!names.Contains(key))
-                    foreach (IProlog prolog in knowledgeBase[key])
-                    {
-                        foreach (string parent in prolog.Parents)
-                            if (names.Contains(parent))
-                            {
-                                children.Add(key);
-                                break;
-                            }
-                        if (children.Contains(key))
-                            break;
-                    }
-            }
-            return children.ToArray();
+            //Console.ReadLine();
         }
     }
 }

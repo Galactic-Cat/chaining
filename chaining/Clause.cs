@@ -1,11 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace chaining
 {
     class Clause
     {
-        private List<string[]> Evaluents = new List<string[]>();
-        public bool? State { get; private set; } = false;
+        private List<List<string>> Evaluents = new List<List<string>>();
+        public bool? State { get; set; } = null;
+        public bool Evaluating { get; private set; } = false;
 
         public Clause(bool? state = null)
         {
@@ -14,32 +16,104 @@ namespace chaining
 
         public void Add(string[] evaluents)
         {
-            Evaluents.Add(evaluents);
+            Evaluents.Add(new List<string>(evaluents));
         }
 
-        public bool? Evaluate(Dictionary<string, Clause> knowledgeBase)
+        public bool Update(Dictionary<string, Clause> knowledgeBase, string updatedParent = null)
         {
+            // If state is already set, there won't be any change.
             if (State != null)
-                return State;
+                return false;
 
-            foreach (string[] evaluent in Evaluents)
+            foreach (List<string> parents in Evaluents)
             {
-                foreach (string clause in evaluent)
+                // Continue if this set of parents doesn't contain the updated parent.
+                if (updatedParent != null && !parents.Contains(updatedParent))
+                    continue; 
+
+                bool isTrue = true;
+                foreach (string parent in parents)
                 {
-                    if (knowledgeBase[clause] == null)
+                    if (!knowledgeBase.ContainsKey(parent))
                     {
+                        // Clause is missing from the knowledgebase, it has to be false.
+                        isTrue = false;
+                        continue;
+                    }
+
+                    bool? state = knowledgeBase[parent].State;
+                    if (state == null)
+                        // State can't be true anymore because not all parents evaluate.
+                        isTrue = false;
+
+                    if (state == false)
+                    {
+                        // State is now false, return true 'cause a change occured.
                         State = false;
-                        return false;
+                        return true;
                     }
-                    bool? state = knowledgeBase[clause].State;
-                    if (state != null)
-                    {
-                        State = state;
-                        return State;
-                    }
+                }
+                if (isTrue) // All parents are true, so state should be true as well.
+                {
+                    State = true;
+                    return true;
                 }
             }
 
+            // Appearently no change occured.
+            return false;
+        }
+
+        public bool? EvaluateDown(Dictionary<string, Clause> knowledgeBase)
+        {
+            if (State != null)
+                return (bool)State;
+
+            Evaluating = true;
+
+            foreach (List<string> children in Evaluents)
+            {
+                bool allTrue = true;
+                foreach (string child in children)
+                {
+                    if (!knowledgeBase.ContainsKey(child))
+                    {
+                        // This value doesn't exist, so it's necessarily false.
+                        State = false;
+                        Evaluating = false;
+                        return false;
+                    }
+
+                    if (knowledgeBase[child].Evaluating)
+                        // This evaluation is looping, gtfo!
+                        break;
+
+                    bool? evaluation = knowledgeBase[child].EvaluateDown(knowledgeBase);
+
+                    if (evaluation == false)
+                    {
+                        // This child is false, so this clause is also false.
+                        State = false;
+                        Evaluating = false;
+                        return false;
+                    }
+                    else if (evaluation == null)
+                    {
+                        // This child is unsure of it's state, so this evaluation is useless.
+                        allTrue = false;
+                        break;
+                    }
+                }
+                if (allTrue)
+                {
+                    // All children are true, so this clause must be true as well.
+                    Evaluating = false;
+                    return true;
+                }
+            }
+
+            // Failed to assertain valuation, so return null
+            Evaluating = false;
             return null;
         }
     }
