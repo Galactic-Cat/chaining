@@ -48,9 +48,8 @@ namespace chaining
 
                     if (state == false)
                     {
-                        // State is now false, return true 'cause a change occured.
-                        State = false;
-                        return true;
+                        isTrue = false;
+                        break;
                     }
                 }
                 if (isTrue) // All parents are true, so state should be true as well.
