@@ -23,7 +23,7 @@ namespace chaining
         {
             // If state is already set, there won't be any change.
             if (State != null)
-                return false;
+                return (bool)State;
 
             foreach (List<string> parents in Evaluents)
             {
@@ -92,9 +92,8 @@ namespace chaining
                     if (evaluation == false)
                     {
                         // This child is false, so this clause is also false.
-                        State = false;
-                        Evaluating = false;
-                        return false;
+                        allTrue = false;
+                        break;
                     }
                     else if (evaluation == null)
                     {
@@ -107,6 +106,7 @@ namespace chaining
                 {
                     // All children are true, so this clause must be true as well.
                     Evaluating = false;
+                    State = true;
                     return true;
                 }
             }

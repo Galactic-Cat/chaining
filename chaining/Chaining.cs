@@ -45,9 +45,9 @@ namespace chaining
 
             // Update the main agenda for later use
             Agenda.Concat(agenda);
-            foreach (KeyValuePair<string, bool> v in inferences)
-                if (v.Value)
-                    Agenda.Add(v.Key);
+            foreach (KeyValuePair<string, bool> kvp in inferences)
+                    if (kvp.Value)
+                        Agenda.Add(kvp.Key);
 
             // Return the result
             return result;
