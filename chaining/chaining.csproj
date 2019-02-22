@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="Chaining.cs" />
     <Compile Include="Clause.cs" />
+    <Compile Include="KnowledgeBase.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -5,115 +5,86 @@ namespace chaining
 {
     class Clause
     {
-        private List<List<string>> Evaluents = new List<List<string>>();
-        public bool? State { get; set; } = null;
-        public bool Evaluating { get; private set; } = false;
+        private List<List<string>> Children { get; set; } = new List<List<string>>();
+        private string Name { get; set; }
+        public bool? State { get; private set; } = null;
 
-        public Clause(bool? state = null)
+        public Clause(string name)
         {
-            State = state;
+            Name = name;
+            State = true; // No children, thus this is a fact.
         }
 
-        public void Add(string[] evaluents)
+        public Clause(string name, List<string> children)
         {
-            Evaluents.Add(new List<string>(evaluents));
+            Name = name;
+            Children.Add(children);
         }
 
-        public bool Update(Dictionary<string, Clause> knowledgeBase, string updatedParent = null)
+        public void AddChildren(List<string> children)
         {
-            // If state is already set, there won't be any change.
-            if (State != null)
-                return (bool)State;
+            Children.Add(children);
+            if (children.Count == 0)
+                // No children == fact, so this clause is automatically true.
+                State = true;
 
-            foreach (List<string> parents in Evaluents)
-            {
-                // Continue if this set of parents doesn't contain the updated parent.
-                if (updatedParent != null && !parents.Contains(updatedParent))
-                    continue; 
-
-                bool isTrue = true;
-                foreach (string parent in parents)
-                {
-                    if (!knowledgeBase.ContainsKey(parent))
-                    {
-                        // Clause is missing from the knowledgebase, it has to be false.
-                        isTrue = false;
-                        continue;
-                    }
-
-                    bool? state = knowledgeBase[parent].State;
-                    if (state == null)
-                        // State can't be true anymore because not all parents evaluate.
-                        isTrue = false;
-
-                    if (state == false)
-                    {
-                        isTrue = false;
-                        break;
-                    }
-                }
-                if (isTrue) // All parents are true, so state should be true as well.
-                {
-                    State = true;
-                    return true;
-                }
-            }
-
-            // Appearently no change occured.
-            return false;
+            if (State == false)
+                // If state was already false, it can't still be, because this new group of children might be true.
+                State = null;
         }
 
-        public bool? EvaluateDown(Dictionary<string, Clause> knowledgeBase)
+        public bool? Evaluate(KnowledgeBase knowledgeBase, string filter = null)
         {
             if (State != null)
-                return (bool)State;
+            // If the state is already known, just return it. No need to overcomplicate things.
+                return State;
 
-            Evaluating = true;
+            bool allFalse = true; // Checks whether all children are false, to update the state if possible.
 
-            foreach (List<string> children in Evaluents)
+            foreach (List<string> children in Children)
             {
-                bool allTrue = true;
+                if (filter != null && !children.Contains(filter))
+                {
+                    allFalse = false; // Can't draw any conclusions on the over-all state of this clause, because not all children are evaluated.
+                    continue; // This list of children doesn't meet the filter, so we skip it.
+                }
+
+                bool allTrue = true; // Checks whether all children in this list are true.
+
                 foreach (string child in children)
                 {
-                    if (!knowledgeBase.ContainsKey(child))
+                    bool? childState = knowledgeBase.Entails(child);
+                    if (childState == null)
                     {
-                        // This value doesn't exist, so it's necessarily false.
-                        State = false;
-                        Evaluating = false;
-                        return false;
-                    }
-
-                    if (knowledgeBase[child].Evaluating)
-                        // This evaluation is looping, gtfo!
-                        break;
-
-                    bool? evaluation = knowledgeBase[child].EvaluateDown(knowledgeBase);
-
-                    if (evaluation == false)
-                    {
-                        // This child is false, so this clause is also false.
                         allTrue = false;
-                        break;
+                        allFalse = false;
+                        break; // We can't infer anything without knowing every child in this set for sure.
                     }
-                    else if (evaluation == null)
+                    else if (childState == false)
                     {
-                        // This child is unsure of it's state, so this evaluation is useless.
                         allTrue = false;
-                        break;
+                        break; // This set of children is false for sure.
                     }
                 }
+
                 if (allTrue)
+                // Found a group of children that are all true, so this is also true.
                 {
-                    // All children are true, so this clause must be true as well.
-                    Evaluating = false;
-                    State = true;
+                    State = true; // For next time.
                     return true;
                 }
             }
 
-            // Failed to assertain valuation, so return null
-            Evaluating = false;
-            return null;
+            if (allFalse)
+            // All children are false, so this clause is also necessarily false.
+            {
+                State = false; // For next time.
+                return false;
+            }
+
+            return null; // Unfortunatly nothing could be inferred for sure.
         }
+
+        public override int GetHashCode() => (new Tuple<string, List<List<string>>>(Name, Children)).GetHashCode();
     }
 }
