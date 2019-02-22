@@ -5,45 +5,45 @@ namespace chaining
 {
     class Clause
     {
-        private List<List<string>> Evaluents = new List<List<string>>();
-        public bool? State { get; set; } = null;
+        private List<List<string>> Antecedents = new List<List<string>>();
+        public bool? State { get; private set; } = null;
         public bool Evaluating { get; private set; } = false;
 
-        public Clause(bool? state = null)
+        public Clause(string[] firstAntecedents)
         {
-            State = state;
+            Antecedents.Add(new List<string>(firstAntecedents));
         }
 
-        public void Add(string[] evaluents)
+        public void Add(string[] newAntecedents)
         {
-            Evaluents.Add(new List<string>(evaluents));
+            Antecedents.Add(new List<string>(newAntecedents));
         }
 
-        public bool Update(Dictionary<string, Clause> knowledgeBase, string updatedParent = null)
+        public bool EvaluateShallow(Dictionary<string, Clause> knowledgeBase, string updatedAntecedent = null)
         {
-            // If state is already set, there won't be any change.
+            // If state is already set, we don't need to go through all the hassle.
             if (State != null)
                 return (bool)State;
 
-            foreach (List<string> parents in Evaluents)
+            foreach (List<string> antecedents in Antecedents)
             {
-                // Continue if this set of parents doesn't contain the updated parent.
-                if (updatedParent != null && !parents.Contains(updatedParent))
+                // Continue if this set of antecedents doesn't contain the updated antecedent (and make sure the updated antecedent isn't the empty string (functioning as verum)).
+                if (updatedAntecedent != null && updatedAntecedent != "" && !antecedents.Contains(updatedAntecedent))
                     continue; 
 
                 bool isTrue = true;
-                foreach (string parent in parents)
+                foreach (string antecedent in antecedents)
                 {
-                    if (!knowledgeBase.ContainsKey(parent))
+                    if (!knowledgeBase.ContainsKey(antecedent))
                     {
                         // Clause is missing from the knowledgebase, it has to be false.
                         isTrue = false;
                         continue;
                     }
 
-                    bool? state = knowledgeBase[parent].State;
+                    bool? state = knowledgeBase[antecedent].State;
                     if (state == null)
-                        // State can't be true anymore because not all parents evaluate.
+                        // State can't be true anymore because not all antecedents evaluate.
                         isTrue = false;
 
                     if (state == false)
@@ -52,30 +52,30 @@ namespace chaining
                         break;
                     }
                 }
-                if (isTrue) // All parents are true, so state should be true as well.
+                if (isTrue) // All antecedents are true, so state should be true as well.
                 {
                     State = true;
                     return true;
                 }
             }
 
-            // Appearently no change occured.
+            // We can't evaluate this to true, so it's false.
             return false;
         }
 
-        public bool? EvaluateDown(Dictionary<string, Clause> knowledgeBase)
+        public bool? EvaluateDeep(Dictionary<string, Clause> knowledgeBase)
         {
             if (State != null)
                 return (bool)State;
 
             Evaluating = true;
 
-            foreach (List<string> children in Evaluents)
+            foreach (List<string> antencedents in Antecedents)
             {
                 bool allTrue = true;
-                foreach (string child in children)
+                foreach (string antencedent in antencedents)
                 {
-                    if (!knowledgeBase.ContainsKey(child))
+                    if (!knowledgeBase.ContainsKey(antencedent))
                     {
                         // This value doesn't exist, so it's necessarily false.
                         State = false;
@@ -83,28 +83,28 @@ namespace chaining
                         return false;
                     }
 
-                    if (knowledgeBase[child].Evaluating)
+                    if (knowledgeBase[antencedent].Evaluating)
                         // This evaluation is looping, gtfo!
                         break;
 
-                    bool? evaluation = knowledgeBase[child].EvaluateDown(knowledgeBase);
+                    bool? evaluation = knowledgeBase[antencedent].EvaluateDeep(knowledgeBase);
 
                     if (evaluation == false)
                     {
-                        // This child is false, so this clause is also false.
+                        // This antencedent is false, so this clause is also false.
                         allTrue = false;
                         break;
                     }
                     else if (evaluation == null)
                     {
-                        // This child is unsure of it's state, so this evaluation is useless.
+                        // This antencedent is unsure of it's state, so this evaluation is useless.
                         allTrue = false;
                         break;
                     }
                 }
                 if (allTrue)
                 {
-                    // All children are true, so this clause must be true as well.
+                    // All antencedents are true, so this clause must be true as well.
                     Evaluating = false;
                     State = true;
                     return true;

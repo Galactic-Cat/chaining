@@ -9,7 +9,6 @@ namespace chaining
 {
     class Chaining
     {
-        private HashSet<string> Agenda { get; set; } = new HashSet<string>();
         private Dictionary<string, Clause> KnowledgeBase { get; set; } = new Dictionary<string, Clause>();
 
         public Chaining(string[] rawKnowledgeBase)
@@ -19,8 +18,10 @@ namespace chaining
 
         public bool Forward(string query)
         {
-            Queue<string> agenda = new Queue<string>(Agenda);
-            Dictionary<string, bool> inferences = KnowledgeBase.Keys.ToDictionary(x => x, x => false);
+            // Create an agenda with only an empty string (functioning as verum)
+            Queue<string> agenda = new Queue<string>(new string[] { "" });
+            // Create a inference dictionary including the empty string (functioning as verum)
+            Dictionary<string, bool> inferences = KnowledgeBase.Keys.Concat(agenda).ToDictionary(x => x, x => false);
 
             bool result = false;
             while (agenda.Count > 0)
@@ -36,18 +37,12 @@ namespace chaining
                     inferences[p] = true;
                     foreach (string key in KnowledgeBase.Keys)
                     {
-                        if (KnowledgeBase[key].Update(KnowledgeBase, p))
+                        if (KnowledgeBase[key].EvaluateShallow(KnowledgeBase, p))
                             if (KnowledgeBase[key].State == true)
                                 agenda.Enqueue(key);
                     }
                 }
             }
-
-            // Update the main agenda for later use
-            Agenda.Concat(agenda);
-            foreach (KeyValuePair<string, bool> kvp in inferences)
-                    if (kvp.Value)
-                        Agenda.Add(kvp.Key);
 
             // Return the result
             return result;
@@ -58,7 +53,7 @@ namespace chaining
             if (!KnowledgeBase.ContainsKey(query))
                 return false;
 
-            bool? evaluation = KnowledgeBase[query].EvaluateDown(KnowledgeBase);
+            bool? evaluation = KnowledgeBase[query].EvaluateDeep(KnowledgeBase);
 
             if (evaluation == null)
                 return false;
@@ -74,19 +69,19 @@ namespace chaining
                 {
                     string name = Regex.Match(line, @"\w+").ToString();
                     if (!KnowledgeBase.ContainsKey(name))
-                        KnowledgeBase.Add(name, new Clause(true));
+                        KnowledgeBase.Add(name, new Clause(new string[0]));
                     else
-                        KnowledgeBase[name].State = true;
-                    Agenda.Add(name);
+                        KnowledgeBase[name].Add(new string[0]);
                 }
                 else // This line contains a rule
                 {
-                    string[] splitLine = Regex.Split(line, ":-");
+                    string[] splitLine = Regex.Split(line, ":-"); // Split name and antecedents
                     string name = splitLine[0];
-                    string[] parents = Regex.Split(splitLine[1].Substring(0, splitLine[1].Length - 1), @",");
+                    string[] antecedents = Regex.Split(splitLine[1].Substring(0, splitLine[1].Length - 1), @",");
                     if (!KnowledgeBase.ContainsKey(name))
-                        KnowledgeBase.Add(name, new Clause());
-                    KnowledgeBase[name].Add(parents);
+                        KnowledgeBase.Add(name, new Clause(antecedents));
+                    else
+                        KnowledgeBase[name].Add(antecedents);
                 }
             }
         }
